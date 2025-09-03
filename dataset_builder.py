@@ -87,7 +87,7 @@ class DataSetBuilder:
             else:
                 self.train[file_path] = label
 
-        # Handle silence separately
+        # silence separately
         silence_files = [
             fp
             for fp, lbl in self.data_mapping.items()
