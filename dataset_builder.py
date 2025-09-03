@@ -2,7 +2,7 @@ import os
 import random
 
 
-class DataSet:
+class DataSetBuilder:
     def __init__(self, main_folder, seed=42):
         self.main_folder = main_folder
         self.data_mapping = {}
@@ -52,11 +52,11 @@ class DataSet:
         n_train = int(n * proportions[0])
         n_val = int(n * proportions[1])
 
-        train = dict(items[:n_train])
-        val = dict(items[n_train : n_train + n_val])
-        test = dict(items[n_train + n_val :])
+        self.train = dict(items[:n_train])
+        self.val = dict(items[n_train : n_train + n_val])
+        self.test = dict(items[n_train + n_val :])
 
-        return train, val, test
+        return self.train, self.val, self.test
 
     def split_with_lists(self, validation_list, testing_list):
         """
@@ -71,7 +71,7 @@ class DataSet:
         with open(testing_list) as f:
             test_set = set(line.strip() for line in f)
 
-        train, val, test = {}, {}, {}
+        self.train, self.val, self.test = {}, {}, {}
 
         for file_path, label in self.data_mapping.items():
             rel_path = os.path.relpath(file_path, self.main_folder).replace("\\", "/")
@@ -81,11 +81,11 @@ class DataSet:
                 continue
 
             if rel_path in val_set:
-                val[file_path] = label
+                self.val[file_path] = label
             elif rel_path in test_set:
-                test[file_path] = label
+                self.test[file_path] = label
             else:
-                train[file_path] = label
+                self.train[file_path] = label
 
         # Handle silence separately
         silence_files = [
@@ -101,10 +101,10 @@ class DataSet:
         n_val = int(n * 0.1)
 
         for fp in silence_files[:n_train]:
-            train[fp] = self.label_to_idx["silence"]
+            self.train[fp] = self.label_to_idx["silence"]
         for fp in silence_files[n_train : n_train + n_val]:
-            val[fp] = self.label_to_idx["silence"]
+            self.val[fp] = self.label_to_idx["silence"]
         for fp in silence_files[n_train + n_val :]:
-            test[fp] = self.label_to_idx["silence"]
+            self.test[fp] = self.label_to_idx["silence"]
 
-        return train, val, test
+        return self.train, self.val, self.test
