@@ -182,4 +182,5 @@ auxiliary
 !requirements.txt
 
 embeddings
+spectrograms
 checkpoints 
