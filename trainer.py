@@ -7,7 +7,6 @@ import os
 class Trainer:
     def __init__(
         self,
-        feature_extractor,
         classifier,
         train_loader,
         val_loader=None,
@@ -15,21 +14,17 @@ class Trainer:
         optimizer_name="adam",
         lr=1e-3,
         dropout=0.2,
-        pool=True,
     ):
         self.device = device or torch.device(
             "cuda" if torch.cuda.is_available() else "cpu"
         )
-        if hasattr(feature_extractor, "pool"):
-            feature_extractor.pool = pool
-        # Set dropout if supported (MLPClassifier)
+
         if hasattr(classifier, "net"):
             for layer in classifier.net:
                 if isinstance(layer, nn.Dropout):
                     layer.p = dropout
-        self.feature_extractor = feature_extractor.to(self.device)
-        self.classifier = classifier.to(self.device)
 
+        self.classifier = classifier.to(self.device)
         self.train_loader = train_loader
         self.val_loader = val_loader
 
@@ -38,10 +33,10 @@ class Trainer:
         params = list(self.classifier.parameters())
         optimizer_map = {
             "adam": torch.optim.Adam,
+            "adamw": torch.optim.AdamW,
             "sgd": torch.optim.SGD,
             "rmsprop": torch.optim.RMSprop,
         }
-
         optimizer_class = optimizer_map.get(optimizer_name.lower())
         if optimizer_class is None:
             raise ValueError(f"Unsupported optimizer: {optimizer_name}")
@@ -54,15 +49,10 @@ class Trainer:
         correct = 0
         total = 0
 
-        for waveforms, labels in tqdm(self.train_loader, desc="Training"):
-            waveforms = waveforms.to(self.device)
-            labels = labels.to(self.device)
+        for features, labels in tqdm(self.train_loader, desc="Training"):
+            features, labels = features.to(self.device), labels.to(self.device)
 
-            # Extract embeddings
-            with torch.no_grad():
-                embeddings = self.feature_extractor(waveforms)
-
-            outputs = self.classifier(embeddings)
+            outputs = self.classifier(features)
             loss = self.criterion(outputs, labels)
 
             self.optimizer.zero_grad()
@@ -89,12 +79,10 @@ class Trainer:
         correct = 0
         total = 0
 
-        for waveforms, labels in tqdm(loader, desc="Evaluating"):
-            waveforms = waveforms.to(self.device)
-            labels = labels.to(self.device)
+        for features, labels in tqdm(loader, desc="Evaluating"):
+            features, labels = features.to(self.device), labels.to(self.device)
 
-            embeddings = self.feature_extractor(waveforms)
-            outputs = self.classifier(embeddings)
+            outputs = self.classifier(features)
             loss = self.criterion(outputs, labels)
 
             total_loss += loss.item() * labels.size(0)
@@ -106,9 +94,10 @@ class Trainer:
         accuracy = correct / total
         return avg_loss, accuracy
 
-    def fit(self, epochs, checkpoint_dir="checkpoints"):
+    def fit(self, epochs, checkpoint_dir="./checkpoints"):
         os.makedirs(checkpoint_dir, exist_ok=True)
         self.checkpoint_dir = checkpoint_dir
+
         for epoch in range(1, epochs + 1):
             train_loss, train_acc = self.train_epoch()
             print(
@@ -119,9 +108,11 @@ class Trainer:
                 val_loss, val_acc = self.evaluate(self.val_loader)
                 print(f"           Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}")
 
-            self.save_checkpoint(epoch)
+            self.save_checkpoint(epoch, train_loss, train_acc, val_loss, val_acc)
 
-    def save_checkpoint(self, epoch, best=False):
+    def save_checkpoint(
+        self, epoch, train_loss, train_acc, val_loss, val_acc, best=False
+    ):
         path = os.path.join(
             self.checkpoint_dir, f"{'best' if best else f'epoch_{epoch}'}.pt"
         )
@@ -130,6 +121,10 @@ class Trainer:
                 "epoch": epoch,
                 "classifier_state": self.classifier.state_dict(),
                 "optimizer_state": self.optimizer.state_dict(),
+                "train_loss": train_loss,
+                "train_acc": train_acc,
+                "val_loss": val_loss,
+                "val_acc": val_acc,
             },
             path,
         )

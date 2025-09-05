@@ -180,3 +180,5 @@ auxiliary
 
 *.txt
 !requirements.txt
+
+embeddings
