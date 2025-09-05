@@ -184,3 +184,5 @@ auxiliary
 embeddings
 spectrograms
 checkpoints 
+
+*.xlsx

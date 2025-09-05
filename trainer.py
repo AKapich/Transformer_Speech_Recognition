@@ -102,13 +102,11 @@ class Trainer:
 
         return avg_loss, accuracy, macro_f1
 
-    def fit(self, epochs, checkpoint_dir="./checkpoints"):
+    def fit(self, epochs, checkpoint_dir="./checkpoints", start_epoch=0):
         os.makedirs(checkpoint_dir, exist_ok=True)
         self.checkpoint_dir = checkpoint_dir
 
-        best_macro_f1 = 0.0
-
-        for epoch in range(1, epochs + 1):
+        for epoch in range(1 + start_epoch, epochs + 1 + start_epoch):
             train_loss, train_acc, train_f1 = self.train_epoch()
             print(
                 f"Epoch {epoch} | Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f} | Train F1 (macro): {train_f1:.4f}"
@@ -122,20 +120,8 @@ class Trainer:
             else:
                 val_loss = val_acc = val_f1 = None
 
-            # Save checkpoint and mark best if macro F1 improved
-            is_best = val_f1 is not None and val_f1 > best_macro_f1
-            if is_best:
-                best_macro_f1 = val_f1
-
             self.save_checkpoint(
-                epoch,
-                train_loss,
-                train_acc,
-                train_f1,
-                val_loss,
-                val_acc,
-                val_f1,
-                best=is_best,
+                epoch, train_loss, train_acc, train_f1, val_loss, val_acc, val_f1
             )
 
     def save_checkpoint(
@@ -147,7 +133,6 @@ class Trainer:
         val_loss,
         val_acc,
         val_f1,
-        best=False,
     ):
         path = os.path.join(self.checkpoint_dir, f"epoch_{epoch}.pt")
         torch.save(
