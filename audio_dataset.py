@@ -4,16 +4,21 @@ from torch.utils.data import Dataset
 
 
 class AudioDataset(Dataset):
-    def __init__(self, data_mapping, sample_rate=16000):
+    def __init__(self, data_mapping, sample_rate=16000, load_audio=True):
         self.items = list(data_mapping.items())
         self.sample_rate = sample_rate
         self.max_length = 1 * sample_rate
+        self.load_audio = load_audio
 
     def __len__(self):
         return len(self.items)
 
     def __getitem__(self, idx):
         file_path, label = self.items[idx]
+
+        if not self.load_audio:
+            return file_path, label
+
         waveform, sr = torchaudio.load(file_path)
 
         if sr != self.sample_rate:
