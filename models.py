@@ -69,3 +69,62 @@ class RNNClassifier(nn.Module):
 
         logits = self.classifier(last_hidden)
         return logits
+
+
+class SpectrogramCNN(nn.Module):
+    def __init__(
+        self,
+        input_channels=1,
+        conv_channels=[16, 32, 64],  # number of filters per conv layer
+        kernel_sizes=[3, 3, 3],
+        pool_sizes=[2, 2, 2],
+        fc_hidden_dim=128,
+        num_classes=12,
+        dropout=0.3,
+    ):
+        super().__init__()
+        assert len(conv_channels) == len(kernel_sizes) == len(pool_sizes)
+
+        self.conv_layers = nn.ModuleList()
+        in_ch = input_channels
+        for out_ch, k, p in zip(conv_channels, kernel_sizes, pool_sizes):
+            self.conv_layers.append(
+                nn.Sequential(
+                    nn.Conv2d(in_ch, out_ch, kernel_size=k, padding=k // 2),
+                    nn.BatchNorm2d(out_ch),
+                    nn.ReLU(),
+                    nn.MaxPool2d(kernel_size=p),
+                )
+            )
+            in_ch = out_ch
+
+        self.dropout = nn.Dropout(dropout)
+        self.fc_hidden_dim = fc_hidden_dim
+        self.num_classes = num_classes
+        self._fc_input_dim = None
+
+        self.fc1 = None
+        self.fc2 = nn.Linear(fc_hidden_dim, num_classes)
+
+    def _get_conv_output_size(self, input_shape):
+        with torch.no_grad():
+            dummy_input = torch.zeros(1, *input_shape)
+            for conv_layer in self.conv_layers:
+                dummy_input = conv_layer(dummy_input)
+            return dummy_input.shape[
+                1
+            ]  # after global average pooling, the size will be the number of channels
+
+    def forward(self, x):
+        if self.fc1 is None:
+            conv_output_size = self._get_conv_output_size(x.shape[1:])
+            self.fc1 = nn.Linear(conv_output_size, self.fc_hidden_dim).to(x.device)
+
+        for conv_layer in self.conv_layers:
+            x = conv_layer(x)
+
+        x = x.mean(dim=[2, 3])  # Shape: [batch_size, channels]
+
+        x = self.dropout(torch.relu(self.fc1(x)))
+        x = self.fc2(x)
+        return x
