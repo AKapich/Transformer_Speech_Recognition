@@ -1,5 +1,30 @@
 import os
 import torch
+import pandas as pd
+from torch.utils.data import TensorDataset
+
+class_names = [
+    "yes",
+    "no",
+    "up",
+    "down",
+    "left",
+    "right",
+    "on",
+    "off",
+    "stop",
+    "go",
+    "silence",
+    "unknown",
+]
+
+
+def load_embeddings(split_name, emb_dir="./embeddings"):
+    path = os.path.join(emb_dir, f"{split_name}.pt")
+    data = torch.load(path)
+    features = data["features"]
+    labels = data["labels"]
+    return TensorDataset(features, labels)
 
 
 def load_experiment_results(base_dir, metric_file="epoch_10.pt"):
@@ -29,9 +54,6 @@ def load_experiment_results(base_dir, metric_file="epoch_10.pt"):
                     "bidirectional": parts[2] == "bidir",
                     "lr": float(parts[3][2:]),
                     "optimizer": parts[4],
-                    "direction": (
-                        "bidirectional" if parts[2] == "bidir" else "unidirectional"
-                    ),
                 }
             else:
                 # MLP format: h{hidden_dim}_d{dropout}_lr{lr}_{optimizer}
@@ -73,3 +95,39 @@ def load_experiment_results(base_dir, metric_file="epoch_10.pt"):
 
     print(f"\nSuccessfully loaded results from {len(results)} experiments")
     return results
+
+
+def load_pt_files_with_epochs(folder_path, target_fields):
+    if not os.path.exists(folder_path):
+        raise ValueError(f"Folder '{folder_path}' does not exist")
+    if not os.path.isdir(folder_path):
+        raise ValueError(f"'{folder_path}' is not a directory")
+
+    pt_files = [
+        f
+        for f in os.listdir(folder_path)
+        if f.endswith(".pt") and os.path.isfile(os.path.join(folder_path, f))
+    ]
+    if not pt_files:
+        raise ValueError(f"No .pt files found in '{folder_path}'")
+
+    results = []
+    for filename in pt_files:
+        try:
+            file_path = os.path.join(folder_path, filename)
+            data = torch.load(file_path)
+            extracted_data = {}
+            if isinstance(data, dict):
+                for field in target_fields:
+                    if field in data:
+                        extracted_data[field] = data[field]
+                extracted_data["model_params"] = folder_path.split("\\")[-1]
+                results.append(extracted_data)
+            else:
+                print(f"Warning: Could not extract epoch number from '{filename}'")
+
+        except Exception as e:
+            print(f"Error processing file '{filename}': {e}")
+    results.sort(key=lambda x: x.get("epoch", 0))
+
+    return pd.DataFrame(results)

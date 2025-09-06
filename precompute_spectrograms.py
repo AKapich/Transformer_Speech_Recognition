@@ -25,10 +25,10 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size)
 test_loader = DataLoader(test_dataset, batch_size=batch_size)
 processor = SpectrogramProcessor(
     sample_rate=16000,
-    n_mels=128,
-    n_fft=2048,
-    hop_length=256,
-    max_time_frames=64,
+    n_mels=64,
+    n_fft=512,
+    hop_length=512,
+    max_time_frames=32,
     apply_normalization=True,
     apply_delta_features=False,
 )
