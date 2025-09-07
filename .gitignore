@@ -186,5 +186,6 @@ spectrograms
 checkpoints 
 
 *.xlsx
-
+*.ipynb
 viz
+results

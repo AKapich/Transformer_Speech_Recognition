@@ -252,15 +252,21 @@ def evaluate_and_plot_full_analysis(
     with torch.no_grad():
         for inputs, targets in test_loader:
             inputs, targets = inputs.to(device), targets.to(device)
+
+            # Handle RNN models that expect sequence input
+            if hasattr(model, "__class__") and "RNN" in model.__class__.__name__:
+                # Add sequence dimension for RNN: [batch_size, 1, input_size]
+                inputs = inputs.unsqueeze(1)
+
             outputs = model(inputs)
             preds = torch.argmax(outputs, dim=1)
 
             all_preds.extend(preds.cpu().numpy())
             all_targets.extend(targets.cpu().numpy())
 
-    f1_per_class = f1_score(all_targets, all_preds, average=None)
-    macro_f1 = f1_score(all_targets, all_preds, average="macro")
-    print(classification_report(all_targets, all_preds, target_names=class_names))
+    f1_per_class = f1_score(all_targets, all_preds, average=None, labels=list(range(len(class_names))), zero_division=0)
+    macro_f1 = f1_score(all_targets, all_preds, average="macro", labels=list(range(len(class_names))), zero_division=0)
+    print(classification_report(all_targets, all_preds, target_names=class_names, labels=list(range(len(class_names))), zero_division=0))
 
     plot_per_class_f1(
         f1_per_class,

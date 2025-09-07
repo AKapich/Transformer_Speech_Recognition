@@ -27,6 +27,20 @@ def load_embeddings(split_name, emb_dir="./embeddings"):
     return TensorDataset(features, labels)
 
 
+def load_spectrograms(split_name, spec_dir="./spectrograms"):
+    """Load spectrograms from saved files"""
+    path = os.path.join(spec_dir, f"{split_name}.pt")
+    data = torch.load(path, map_location="cpu")
+    spectrograms = data["features"]
+    labels = data["labels"]
+
+    if len(spectrograms.shape) == 3:
+        spectrograms = spectrograms.unsqueeze(1)
+
+    print(f"Loaded {split_name}: {spectrograms.shape}, Labels: {labels.shape}")
+    return TensorDataset(spectrograms, labels)
+
+
 def load_experiment_results(base_dir, metric_file="epoch_10.pt"):
     """Load experiment results from checkpoint directories."""
     if not os.path.exists(base_dir):
@@ -55,6 +69,16 @@ def load_experiment_results(base_dir, metric_file="epoch_10.pt"):
                     "lr": float(parts[3][2:]),
                     "optimizer": parts[4],
                 }
+            elif "conv" in dirname:
+                # CNN format: conv{conv_str}_fc{fc_hidden_dim}_d{dropout}_lr{lr}_{optimizer}
+                result = {
+                    "conv_layers": parts[0][4:] + " " + parts[1] + " " + parts[2],
+                    "fc_hidden_dim": int(parts[-4][2:]),
+                    "dropout": float(parts[-3][1:]),
+                    "lr": float(parts[-2][2:]),
+                    "optimizer": parts[-1],
+                }
+
             else:
                 # MLP format: h{hidden_dim}_d{dropout}_lr{lr}_{optimizer}
                 result = {

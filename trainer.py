@@ -15,6 +15,7 @@ class Trainer:
         optimizer_name="adam",
         lr=1e-3,
         dropout=0.2,
+        criterion=None,
     ):
         self.device = device or torch.device(
             "cuda" if torch.cuda.is_available() else "cpu"
@@ -29,7 +30,7 @@ class Trainer:
         self.train_loader = train_loader
         self.val_loader = val_loader
 
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = criterion or nn.CrossEntropyLoss()
 
         params = list(self.classifier.parameters())
         optimizer_map = {
