@@ -22,11 +22,11 @@ train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=batch_size)
 test_loader = DataLoader(test_dataset, batch_size=batch_size)
 
-feature_extractor = Wav2VecFeatureExtractor(freeze=True, pool=True).to(device)
+feature_extractor = Wav2VecFeatureExtractor(freeze=True, pool=False).to(device)
 feature_extractor.eval()
 
 
-def compute_and_save_embeddings(loader, split_name, out_dir="./embeddings"):
+def compute_and_save_embeddings(loader, split_name, out_dir="./embeddings_unpooled"):
     all_features, all_labels = [], []
     with torch.no_grad():
         for waveforms, labels in loader:
