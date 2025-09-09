@@ -60,6 +60,9 @@ class RNNClassifier(nn.Module):
         self.classifier = nn.Linear(hidden_size * factor, output_size)
 
     def forward(self, x):
+        if len(x.shape) == 2:
+            x = x.unsqueeze(1)
+
         _, hidden = self.rnn(x)
 
         if self.bidirectional:

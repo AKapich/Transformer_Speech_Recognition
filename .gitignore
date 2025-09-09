@@ -187,5 +187,6 @@ checkpoints
 
 *.xlsx
 *.ipynb
+*.json
 viz
 results
